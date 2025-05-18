@@ -9,7 +9,124 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string | null
+          id: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      scan_results: {
+        Row: {
+          created_at: string
+          id: string
+          raw_output: Json | null
+          scan_date: string
+          scan_type: string
+          status: string
+          summary: string | null
+          target: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          raw_output?: Json | null
+          scan_date?: string
+          scan_type: string
+          status?: string
+          summary?: string | null
+          target: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          raw_output?: Json | null
+          scan_date?: string
+          scan_type?: string
+          status?: string
+          summary?: string | null
+          target?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vulnerabilities: {
+        Row: {
+          created_at: string
+          cvss_score: number | null
+          description: string | null
+          id: string
+          name: string
+          remediation: string | null
+          scan_id: string | null
+          severity: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          cvss_score?: number | null
+          description?: string | null
+          id?: string
+          name: string
+          remediation?: string | null
+          scan_id?: string | null
+          severity: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          cvss_score?: number | null
+          description?: string | null
+          id?: string
+          name?: string
+          remediation?: string | null
+          scan_id?: string | null
+          severity?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vulnerabilities_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scan_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import Terminal from '@/components/Terminal';
 import NetworkTools from '@/components/NetworkTools';
@@ -9,14 +10,16 @@ import ReportingTools from '@/components/ReportingTools';
 import Documentation from '@/components/Documentation';
 import EthicsDisclaimer from '@/components/EthicsDisclaimer';
 import { TabsContent, Tabs } from '@/components/ui/tabs';
-import { Shield } from 'lucide-react';
+import { Shield, FileBarChart } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("tools");
   const [showTerminalCommand, setShowTerminalCommand] = useState("");
   const [showDisclaimer, setShowDisclaimer] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleRunTool = (command: string) => {
     setActiveTab("terminal");
@@ -64,6 +67,16 @@ const Index = () => {
                 Professional-grade penetration testing and security assessment toolkit.
                 Select a tool category below or use the terminal interface for advanced control.
               </p>
+              <div className="flex mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-hacker-green text-hacker-green hover:bg-hacker-green hover:text-black"
+                  onClick={() => navigate('/scan-results')}
+                >
+                  <FileBarChart className="h-4 w-4 mr-2" /> View Scan History
+                </Button>
+              </div>
             </div>
             
             <div className="space-y-10">

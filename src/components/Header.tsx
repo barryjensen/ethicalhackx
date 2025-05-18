@@ -1,8 +1,25 @@
 
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Shield, Terminal as TerminalIcon, Info } from 'lucide-react';
+import { 
+  Shield, 
+  Terminal as TerminalIcon, 
+  Info, 
+  User,
+  LogOut
+} from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useUser } from '@/context/UserContext';
+import { useNavigate } from 'react-router-dom';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useToast } from '@/components/ui/use-toast';
 
 interface HeaderProps {
   activeTab: string;
@@ -11,6 +28,31 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, showDisclaimer }) => {
+  const { user, signOut } = useUser();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed out successfully",
+        description: "You have been logged out of EthicalHackX",
+      });
+      navigate('/auth');
+    } catch (error) {
+      toast({
+        title: "Error signing out",
+        description: "There was a problem signing you out",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLoginClick = () => {
+    navigate('/auth');
+  };
+
   return (
     <header className="border-b border-hacker-green/30 py-2 px-4 bg-card">
       <div className="container mx-auto">
@@ -40,6 +82,41 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, showDisclaimer
             >
               <Info className="h-5 w-5" />
             </Button>
+            
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon"
+                    className="rounded-full border-hacker-green text-hacker-green hover:bg-hacker-green hover:text-black"
+                  >
+                    <User className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>
+                    {user.email}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-500 focus:text-red-500">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Sign Out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="ml-2 border-hacker-green text-hacker-green hover:bg-hacker-green hover:text-black"
+                onClick={handleLoginClick}
+              >
+                <User className="h-4 w-4 mr-1" />
+                Login
+              </Button>
+            )}
+            
             <Button 
               variant="outline" 
               size="sm"

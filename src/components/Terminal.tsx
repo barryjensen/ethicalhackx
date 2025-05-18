@@ -1,6 +1,8 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useUser } from '@/context/UserContext';
+import { useToast } from '@/components/ui/use-toast';
 
 interface TerminalProps {
   className?: string;
@@ -20,6 +22,9 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
+  const { user } = useUser();
+  const { toast } = useToast();
+  const [currentScanId, setCurrentScanId] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialCommand) {
@@ -58,13 +63,78 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
     };
   }, []);
 
-  const handleCommand = (cmd: string) => {
+  const saveScanResult = async (type: string, target: string, summary: string) => {
+    if (!user) {
+      setHistory(prev => [
+        ...prev,
+        { content: 'Login required to save scan results', type: 'warning' },
+      ]);
+      return null;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('scan_results')
+        .insert([
+          { 
+            user_id: user.id, 
+            scan_type: type, 
+            target: target,
+            summary: summary,
+            raw_output: JSON.stringify(history)
+          }
+        ])
+        .select('id')
+        .single();
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Scan saved",
+        description: "Scan results have been saved to your account",
+      });
+      
+      return data.id;
+    } catch (error) {
+      console.error("Error saving scan:", error);
+      toast({
+        title: "Error saving scan",
+        description: "There was a problem saving your scan results",
+        variant: "destructive",
+      });
+      return null;
+    }
+  };
+
+  const saveVulnerability = async (scanId: string, name: string, severity: string, description?: string) => {
+    if (!user || !scanId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('vulnerabilities')
+        .insert([
+          { 
+            scan_id: scanId, 
+            name: name, 
+            severity: severity,
+            description: description || ''
+          }
+        ]);
+      
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error saving vulnerability:", error);
+    }
+  };
+
+  const handleCommand = async (cmd: string) => {
     // Add command to history
     setHistory(prev => [...prev, { content: `$ ${cmd}`, type: 'input' }]);
     setCommandHistory(prev => [...prev, cmd]);
     
     // Process command
     const trimmedCmd = cmd.trim().toLowerCase();
+    const cmdParts = trimmedCmd.split(' ');
     
     if (trimmedCmd === 'help') {
       setHistory(prev => [
@@ -82,6 +152,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '  report            - Generate reports from collected data', type: 'output' },
         { content: '  update            - Update toolkit and tools', type: 'output' },
         { content: '  version           - Display version information', type: 'output' },
+        { content: '  save-scan         - Save current scan results to your account', type: 'output' },
         { content: '  exit              - Exit toolkit', type: 'output' },
       ]);
     } else if (trimmedCmd === 'clear') {
@@ -109,6 +180,126 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '3. VMware Workstation/Player', type: 'output' },
         { content: 'Enter selection (1-3):', type: 'output' },
       ]);
+    } else if (trimmedCmd === 'save-scan') {
+      if (!user) {
+        setHistory(prev => [
+          ...prev,
+          { content: 'You must be logged in to save scan results', type: 'error' },
+          { content: 'Please login using the account button in the top right', type: 'output' },
+        ]);
+      } else if (commandHistory.length <= 1) {
+        setHistory(prev => [
+          ...prev,
+          { content: 'No scan to save. Run a scan first.', type: 'warning' },
+        ]);
+      } else {
+        setHistory(prev => [
+          ...prev,
+          { content: 'Please enter scan type:', type: 'output' },
+          { content: '1. Network Scan', type: 'output' },
+          { content: '2. Web Application Test', type: 'output' },
+          { content: '3. Vulnerability Assessment', type: 'output' },
+          { content: '4. Password Audit', type: 'output' },
+        ]);
+      }
+    } else if (['1', '2', '3', '4'].includes(trimmedCmd) && history[history.length - 1]?.content === '4. Password Audit') {
+      const scanTypes = {
+        '1': 'Network Scan',
+        '2': 'Web Application Test',
+        '3': 'Vulnerability Assessment',
+        '4': 'Password Audit'
+      };
+      const selectedType = scanTypes[trimmedCmd as keyof typeof scanTypes];
+      
+      setHistory(prev => [
+        ...prev,
+        { content: `Selected: ${selectedType}`, type: 'success' },
+        { content: 'Enter target (hostname, URL, or description):', type: 'output' },
+      ]);
+    } else if (history[history.length - 1]?.content === 'Enter target (hostname, URL, or description):') {
+      const target = cmd;
+      const scanType = history[history.length - 2]?.content.replace('Selected: ', '');
+      
+      setHistory(prev => [
+        ...prev,
+        { content: `Saving scan for target: ${target}`, type: 'output' },
+        { content: 'Preparing scan summary...', type: 'output' },
+      ]);
+      
+      // Generate a summary based on command history
+      const summary = `${scanType} performed on ${target} with ${commandHistory.length} commands executed.`;
+      
+      // Save to Supabase
+      const scanId = await saveScanResult(scanType, target, summary);
+      setCurrentScanId(scanId);
+      
+      if (scanId) {
+        setHistory(prev => [
+          ...prev,
+          { content: 'Scan saved successfully!', type: 'success' },
+          { content: 'Would you like to add vulnerability findings? (y/n)', type: 'output' },
+        ]);
+      } else {
+        setHistory(prev => [
+          ...prev,
+          { content: 'Failed to save scan.', type: 'error' },
+        ]);
+      }
+    } else if (['y', 'n'].includes(trimmedCmd) && history[history.length - 1]?.content === 'Would you like to add vulnerability findings? (y/n)') {
+      if (trimmedCmd === 'y') {
+        setHistory(prev => [
+          ...prev,
+          { content: 'Enter vulnerability information', type: 'output' },
+          { content: 'Format: <vulnerability name> | <severity: high/medium/low> | <description (optional)>', type: 'output' },
+          { content: 'Example: SQL Injection | high | Found in login form', type: 'output' },
+        ]);
+      } else {
+        setHistory(prev => [
+          ...prev,
+          { content: 'Scan saved without vulnerability details.', type: 'success' },
+        ]);
+      }
+    } else if (history[history.length - 1]?.content === 'Example: SQL Injection | high | Found in login form') {
+      const parts = cmd.split('|').map(p => p.trim());
+      if (parts.length >= 2 && currentScanId) {
+        const name = parts[0];
+        const severity = parts[1].toLowerCase();
+        const description = parts[2] || '';
+        
+        if (!['high', 'medium', 'low'].includes(severity)) {
+          setHistory(prev => [
+            ...prev,
+            { content: 'Invalid severity level. Use high, medium, or low.', type: 'error' },
+          ]);
+        } else {
+          await saveVulnerability(currentScanId, name, severity, description);
+          
+          setHistory(prev => [
+            ...prev,
+            { content: 'Vulnerability recorded.', type: 'success' },
+            { content: 'Add another vulnerability? (y/n)', type: 'output' },
+          ]);
+        }
+      } else {
+        setHistory(prev => [
+          ...prev,
+          { content: 'Invalid format. Use: name | severity | description', type: 'error' },
+        ]);
+      }
+    } else if (['y', 'n'].includes(trimmedCmd) && history[history.length - 1]?.content === 'Add another vulnerability? (y/n)') {
+      if (trimmedCmd === 'y') {
+        setHistory(prev => [
+          ...prev,
+          { content: 'Enter vulnerability information', type: 'output' },
+          { content: 'Format: <vulnerability name> | <severity: high/medium/low> | <description (optional)>', type: 'output' },
+          { content: 'Example: SQL Injection | high | Found in login form', type: 'output' },
+        ]);
+      } else {
+        setHistory(prev => [
+          ...prev,
+          { content: 'All vulnerabilities saved.', type: 'success' },
+        ]);
+      }
     } else if (['1', '2', '3'].includes(trimmedCmd) && history[history.length - 1]?.content === 'Enter selection (1-3):') {
       const platforms = {
         '1': 'VirtualBox',
@@ -263,7 +454,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         ]);
       }
     } else if (trimmedCmd === 'back' || ['1', '2', '3', '4', '5'].includes(trimmedCmd)) {
-      // For demo purposes, just acknowledge the selection
+      // Tool selection handling
       if (['1', '2', '3', '4', '5'].includes(trimmedCmd)) {
         // Get the parent command context
         const contextLine = history.slice().reverse().find(line => 

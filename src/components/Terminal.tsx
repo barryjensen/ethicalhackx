@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/components/ui/use-toast';
+import { executeCommand } from '@/utils/toolExecutors';
 
 interface TerminalProps {
   className?: string;
@@ -19,6 +21,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
   const [history, setHistory] = useState<TerminalLine[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [commandHistory, setCommandHistory] = useState<string[]>([]);
+  const [processingCommand, setProcessingCommand] = useState(false);
   const terminalEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -33,7 +36,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
     
     // Add welcome message
     setHistory([
-      { content: 'EthicalHackX Toolkit v1.0.0', type: 'success' },
+      { content: 'EthicalHackX Toolkit v1.1.0', type: 'success' },
       { content: 'Type "help" for available commands', type: 'output' },
     ]);
   }, [initialCommand]);
@@ -128,9 +131,13 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
   };
 
   const handleCommand = async (cmd: string) => {
+    // Prevent multiple commands from being executed simultaneously
+    if (processingCommand) return;
+    
     // Add command to history
     setHistory(prev => [...prev, { content: `$ ${cmd}`, type: 'input' }]);
     setCommandHistory(prev => [...prev, cmd]);
+    setProcessingCommand(true);
     
     // Process command
     const trimmedCmd = cmd.trim().toLowerCase();
@@ -140,36 +147,48 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
       setHistory(prev => [
         ...prev, 
         { content: 'Available Commands:', type: 'output' },
+        { content: 'General Commands:', type: 'output' },
         { content: '  help              - Display this help menu', type: 'output' },
         { content: '  clear             - Clear terminal', type: 'output' },
         { content: '  setup-vm          - Start VM setup wizard', type: 'output' },
-        { content: '  network-recon     - Network reconnaissance tools', type: 'output' },
-        { content: '  webapp-test       - Web application testing tools', type: 'output' },
-        { content: '  wireless          - Wireless attack tools', type: 'output' },
-        { content: '  password-audit    - Password auditing tools', type: 'output' },
-        { content: '  phishing          - Phishing simulation tools (educational only)', type: 'output' },
-        { content: '  social-eng        - Social engineering awareness tools', type: 'output' },
-        { content: '  report            - Generate reports from collected data', type: 'output' },
-        { content: '  update            - Update toolkit and tools', type: 'output' },
         { content: '  version           - Display version information', type: 'output' },
         { content: '  save-scan         - Save current scan results to your account', type: 'output' },
         { content: '  exit              - Exit toolkit', type: 'output' },
+        { content: '\nNetwork Tools:', type: 'output' },
+        { content: '  nmap <target>     - Scan network for open ports and services', type: 'output' },
+        { content: '  network-scan <target> - Same as nmap', type: 'output' },
+        { content: '  traffic-analyze <interface> [duration] - Analyze network traffic', type: 'output' },
+        { content: '  wifi-scan         - Scan for nearby wireless networks', type: 'output' },
+        { content: '  dns-lookup <domain> - Lookup DNS records for a domain', type: 'output' },
+        { content: '\nWeb Application Tools:', type: 'output' },
+        { content: '  webscan <url>     - Scan website for vulnerabilities', type: 'output' },
+        { content: '  web-scan <url>    - Same as webscan', type: 'output' },
+        { content: '\nPassword Tools:', type: 'output' },
+        { content: '  analyze-password <password> - Check password strength', type: 'output' },
+        { content: '  password-check <password>   - Same as analyze-password', type: 'output' },
+        { content: '\nSystem Tools:', type: 'output' },
+        { content: '  fs-analyze <path> - Analyze file system security', type: 'output' },
+        { content: '  file-system <path> - Same as fs-analyze', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'clear') {
       setHistory([]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'version') {
       setHistory(prev => [
         ...prev, 
-        { content: 'EthicalHackX Toolkit v1.0.0', type: 'success' },
+        { content: 'EthicalHackX Toolkit v1.1.0', type: 'success' },
         { content: 'Build: 2025-05-18 (stable)', type: 'output' },
         { content: 'Kali Linux Compatibility: 2023.1+', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'exit') {
       setHistory(prev => [
         ...prev, 
         { content: 'Exiting EthicalHackX Toolkit...', type: 'warning' },
         { content: 'Thank you for using our ethical hacking tools.', type: 'success' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'setup-vm') {
       setHistory(prev => [
         ...prev, 
@@ -180,6 +199,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '3. VMware Workstation/Player', type: 'output' },
         { content: 'Enter selection (1-3):', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'save-scan') {
       if (!user) {
         setHistory(prev => [
@@ -202,6 +222,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
           { content: '4. Password Audit', type: 'output' },
         ]);
       }
+      setProcessingCommand(false);
     } else if (['1', '2', '3', '4'].includes(trimmedCmd) && history[history.length - 1]?.content === '4. Password Audit') {
       const scanTypes = {
         '1': 'Network Scan',
@@ -216,6 +237,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: `Selected: ${selectedType}`, type: 'success' },
         { content: 'Enter target (hostname, URL, or description):', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (history[history.length - 1]?.content === 'Enter target (hostname, URL, or description):') {
       const target = cmd;
       const scanType = history[history.length - 2]?.content.replace('Selected: ', '');
@@ -245,6 +267,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
           { content: 'Failed to save scan.', type: 'error' },
         ]);
       }
+      setProcessingCommand(false);
     } else if (['y', 'n'].includes(trimmedCmd) && history[history.length - 1]?.content === 'Would you like to add vulnerability findings? (y/n)') {
       if (trimmedCmd === 'y') {
         setHistory(prev => [
@@ -259,6 +282,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
           { content: 'Scan saved without vulnerability details.', type: 'success' },
         ]);
       }
+      setProcessingCommand(false);
     } else if (history[history.length - 1]?.content === 'Example: SQL Injection | high | Found in login form') {
       const parts = cmd.split('|').map(p => p.trim());
       if (parts.length >= 2 && currentScanId) {
@@ -286,6 +310,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
           { content: 'Invalid format. Use: name | severity | description', type: 'error' },
         ]);
       }
+      setProcessingCommand(false);
     } else if (['y', 'n'].includes(trimmedCmd) && history[history.length - 1]?.content === 'Add another vulnerability? (y/n)') {
       if (trimmedCmd === 'y') {
         setHistory(prev => [
@@ -300,6 +325,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
           { content: 'All vulnerabilities saved.', type: 'success' },
         ]);
       }
+      setProcessingCommand(false);
     } else if (['1', '2', '3'].includes(trimmedCmd) && history[history.length - 1]?.content === 'Enter selection (1-3):') {
       const platforms = {
         '1': 'VirtualBox',
@@ -318,6 +344,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '- Network: Bridged', type: 'output' },
         { content: 'Would you like to customize these settings? (y/n)', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (['y', 'n'].includes(trimmedCmd) && history[history.length - 1]?.content === 'Would you like to customize these settings? (y/n)') {
       if (trimmedCmd === 'y') {
         setHistory(prev => [
@@ -337,6 +364,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
           { content: 'VM setup complete! You can now access your Kali Linux VM.', type: 'success' },
         ]);
       }
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'network-recon') {
       setHistory(prev => [
         ...prev, 
@@ -349,6 +377,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '5. Recon-ng - Web reconnaissance framework', type: 'output' },
         { content: 'Enter tool number or "back" to return:', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'webapp-test') {
       setHistory(prev => [
         ...prev, 
@@ -361,6 +390,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '5. Burp Suite - Web vulnerability scanner', type: 'output' },
         { content: 'Enter tool number or "back" to return:', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'wireless') {
       setHistory(prev => [
         ...prev, 
@@ -373,6 +403,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '5. Bluetooth Tools - Scanning and exploitation tools', type: 'output' },
         { content: 'Enter tool number or "back" to return:', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'password-audit') {
       setHistory(prev => [
         ...prev, 
@@ -385,6 +416,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '5. Hash-Identifier - Identify different hash types', type: 'output' },
         { content: 'Enter tool number or "back" to return:', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'phishing') {
       setHistory(prev => [
         ...prev, 
@@ -394,6 +426,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '', type: 'output' },
         { content: 'Do you acknowledge these terms? (yes/no)', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'yes' && history[history.length - 1]?.content === 'Do you acknowledge these terms? (yes/no)') {
       setHistory(prev => [
         ...prev, 
@@ -405,6 +438,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '4. Awareness Training - Educational materials', type: 'output' },
         { content: 'Enter tool number or "back" to return:', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'social-eng') {
       setHistory(prev => [
         ...prev, 
@@ -416,6 +450,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '4. Attack Simulation - Safe simulated attacks', type: 'output' },
         { content: 'Enter tool number or "back" to return:', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'report') {
       setHistory(prev => [
         ...prev, 
@@ -428,6 +463,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: '4. Compliance Status', type: 'output' },
         { content: 'Enter report type or "back" to return:', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'update') {
       setHistory(prev => [
         ...prev, 
@@ -436,6 +472,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
         { content: 'Toolkit version is current.', type: 'success' },
         { content: 'Would you like to update all tools to latest versions? (y/n)', type: 'output' },
       ]);
+      setProcessingCommand(false);
     } else if (['y', 'n'].includes(trimmedCmd) && history[history.length - 1]?.content === 'Would you like to update all tools to latest versions? (y/n)') {
       if (trimmedCmd === 'y') {
         setHistory(prev => [
@@ -453,6 +490,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
           { content: 'Update canceled.', type: 'warning' },
         ]);
       }
+      setProcessingCommand(false);
     } else if (trimmedCmd === 'back' || ['1', '2', '3', '4', '5'].includes(trimmedCmd)) {
       // Tool selection handling
       if (['1', '2', '3', '4', '5'].includes(trimmedCmd)) {
@@ -475,7 +513,6 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
           ...prev, 
           { content: `Selected ${context} tool #${trimmedCmd}`, type: 'success' },
           { content: 'Launching tool interface...', type: 'output' },
-          { content: '(Tool functionality is simulated in this demo)', type: 'warning' },
           { content: 'Type "back" to return to main menu', type: 'output' },
         ]);
       } else {
@@ -484,12 +521,25 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
           { content: 'Returning to main menu...', type: 'output' },
         ]);
       }
+      setProcessingCommand(false);
     } else {
-      setHistory(prev => [
-        ...prev, 
-        { content: `Command not found: ${cmd}`, type: 'error' },
-        { content: 'Type "help" for available commands', type: 'output' },
-      ]);
+      // Try to execute the command using our tool executors
+      try {
+        const result = await executeCommand(cmd);
+        
+        // Add each line of output to the history
+        result.output.forEach(line => {
+          setHistory(prev => [...prev, { content: line, type: result.type }]);
+        });
+      } catch (error) {
+        console.error("Command execution error:", error);
+        setHistory(prev => [
+          ...prev, 
+          { content: `Error executing command: ${error instanceof Error ? error.message : String(error)}`, type: 'error' },
+          { content: 'Type "help" for available commands', type: 'output' },
+        ]);
+      }
+      setProcessingCommand(false);
     }
     
     setCommand('');
@@ -497,7 +547,7 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && command.trim()) {
+    if (e.key === 'Enter' && command.trim() && !processingCommand) {
       handleCommand(command);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
@@ -553,12 +603,12 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
           <div className="w-3 h-3 rounded-full bg-green-500"></div>
         </div>
         <div className="text-hacker-green font-bold">EthicalHackX Terminal</div>
-        <div className="text-xs opacity-50">v1.0.0</div>
+        <div className="text-xs opacity-50">v1.1.0</div>
       </div>
       
       <div className="min-h-[calc(100%-2rem)]">
         {history.map((line, index) => (
-          <div key={index} className={cn("py-1", getLineColor(line.type))}>
+          <div key={index} className={cn("py-1 whitespace-pre-wrap break-words", getLineColor(line.type))}>
             {line.content}
           </div>
         ))}
@@ -572,9 +622,11 @@ const Terminal: React.FC<TerminalProps> = ({ className, initialCommand }) => {
             onChange={(e) => setCommand(e.target.value)}
             onKeyDown={handleKeyDown}
             className="bg-transparent border-none outline-none text-hacker-green flex-grow"
+            placeholder={processingCommand ? "Processing..." : ""}
+            disabled={processingCommand}
             autoFocus
           />
-          <span className="terminal-cursor"></span>
+          {processingCommand && <span className="animate-pulse text-hacker-green ml-2">▋</span>}
         </div>
         <div ref={terminalEndRef} />
       </div>

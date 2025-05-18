@@ -13,6 +13,8 @@ import { TabsContent, Tabs } from '@/components/ui/tabs';
 import { Shield, FileBarChart } from 'lucide-react';
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from '@/components/ui/button';
+import CryptoTools from '@/components/CryptoTools';
+import ForensicTools from '@/components/ForensicTools';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("tools");
@@ -61,7 +63,7 @@ const Index = () => {
             <div className="mb-6 p-4 bg-card rounded-lg border border-hacker-green/30">
               <div className="flex items-center gap-3 mb-2">
                 <Shield className="h-6 w-6 text-hacker-green" />
-                <h1 className="text-2xl font-bold text-hacker-green">EthicalHackX Toolkit</h1>
+                <h1 className="text-2xl font-bold text-hacker-green">EthicalHackX Toolkit v1.1.0</h1>
               </div>
               <p className="text-muted-foreground">
                 Professional-grade penetration testing and security assessment toolkit.
@@ -83,6 +85,8 @@ const Index = () => {
               <NetworkTools onRunTool={handleRunTool} />
               <WebTools onRunTool={handleRunTool} />
               <PasswordTools onRunTool={handleRunTool} />
+              <CryptoTools onRunTool={handleRunTool} />
+              <ForensicTools onRunTool={handleRunTool} />
             </div>
           </TabsContent>
           
@@ -103,7 +107,7 @@ const Index = () => {
       </main>
       
       <footer className="border-t border-hacker-green/30 py-2 px-4 text-center text-muted-foreground text-xs">
-        <p>EthicalHackX v1.0.0 | Educational and professional use only | © 2025</p>
+        <p>EthicalHackX v1.1.0 | Educational and professional use only | © 2025</p>
       </footer>
     </div>
   );

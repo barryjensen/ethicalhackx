@@ -24,10 +24,11 @@ const Auth: React.FC = () => {
     checkSession();
     
     // Handle hash fragment from implicit OAuth flow
-    if (window.location.hash) {
-      // The presence of a hash usually indicates a redirect from OAuth
-      const handleHashChange = async () => {
+    if (window.location.hash || window.location.search) {
+      // The presence of a hash or query params usually indicates a redirect from OAuth
+      const handleAuthRedirect = async () => {
         try {
+          console.log("Processing OAuth redirect");
           // Let Supabase Auth handle the hash fragment
           const { data, error } = await supabase.auth.getUser();
           
@@ -50,7 +51,7 @@ const Auth: React.FC = () => {
         }
       };
       
-      handleHashChange();
+      handleAuthRedirect();
     }
     
     // Listen for auth changes

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,7 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Shield, LogIn, UserPlus, AlertCircle, Github } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 type AuthMode = 'login' | 'signup';
 
@@ -16,6 +17,7 @@ const AuthForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Clean up auth state to prevent auth limbo
   const cleanupAuthState = () => {
@@ -90,7 +92,7 @@ const AuthForm: React.FC = () => {
               full_name: email.split('@')[0],
             },
             // Skip email verification
-            emailRedirectTo: window.location.origin
+            emailRedirectTo: window.location.origin + '/auth'
           }
         });
         
@@ -117,14 +119,20 @@ const AuthForm: React.FC = () => {
     try {
       cleanupAuthState();
       
-      // Use the current URL as the redirect URL
+      // Use the current URL origin as the redirect URL
       const redirectTo = window.location.origin + '/auth'; 
+      
+      console.log("GitHub auth with redirect to:", redirectTo);
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
           redirectTo: redirectTo,
-          scopes: 'user:email' // Request email scope explicitly
+          scopes: 'user:email', // Request email scope explicitly
+          queryParams: {
+            // Force redirect to the specified URL, no localhost
+            redirect_uri: redirectTo
+          }
         }
       });
       

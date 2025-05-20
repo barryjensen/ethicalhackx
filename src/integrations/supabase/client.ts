@@ -17,7 +17,8 @@ export const supabase = createClient<Database>(
       autoRefreshToken: true,
       persistSession: true,
       storage: localStorage,
-      flowType: 'implicit' // Use implicit flow for smoother OAuth redirects
+      flowType: 'pkce', // Change from 'implicit' to 'pkce' for better security and redirect handling
+      detectSessionInUrl: true // Make sure to detect and handle the session in URL
     }
   }
 );

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 interface ExecutionResult {
@@ -510,8 +511,8 @@ export async function dnsLookup(domain: string): Promise<ExecutionResult> {
 }
 
 // Network traffic analyzer
-export async function analyzeTraffic(interface: string, duration: number = 10): Promise<ExecutionResult> {
-  if (!interface) {
+export async function analyzeTraffic(networkInterface: string, duration: number = 10): Promise<ExecutionResult> {
+  if (!networkInterface) {
     return {
       output: ['Error: No network interface specified. Usage: traffic-analyze <interface> [duration]'],
       type: 'error'
@@ -519,7 +520,7 @@ export async function analyzeTraffic(interface: string, duration: number = 10): 
   }
   
   const results = [];
-  results.push(`Starting network traffic analysis on interface ${interface}`);
+  results.push(`Starting network traffic analysis on interface ${networkInterface}`);
   results.push(`Capturing traffic for ${duration} seconds...`);
   
   // Simulate capture delay

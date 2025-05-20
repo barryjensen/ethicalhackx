@@ -6,7 +6,8 @@ import {
   Terminal as TerminalIcon, 
   Info, 
   User,
-  LogOut
+  LogOut,
+  Github
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUser } from '@/context/UserContext';
@@ -20,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface HeaderProps {
   activeTab: string;
@@ -51,6 +53,27 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, showDisclaimer
 
   const handleLoginClick = () => {
     navigate('/auth');
+  };
+
+  const handleGithubLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github'
+      });
+      
+      if (error) throw error;
+      
+      toast({
+        title: "GitHub authentication initiated",
+        description: "Redirecting to GitHub for authentication",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Authentication error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -117,14 +140,17 @@ const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab, showDisclaimer
               </Button>
             )}
             
-            <Button 
-              variant="outline" 
-              size="sm"
-              className="ml-2 border-hacker-green text-hacker-green hover:bg-hacker-green hover:text-black"
-            >
-              <TerminalIcon className="h-4 w-4 mr-1" />
-              VM Setup
-            </Button>
+            {!user && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="ml-2 border-hacker-green text-hacker-green hover:bg-hacker-green hover:text-black"
+                onClick={handleGithubLogin}
+              >
+                <Github className="h-4 w-4 mr-1" />
+                GitHub Login
+              </Button>
+            )}
           </div>
         </div>
         

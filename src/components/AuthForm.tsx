@@ -1,11 +1,11 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Shield, LogIn, UserPlus, AlertCircle, Github } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from 'react-router-dom';
 
 type AuthMode = 'login' | 'signup';
 
@@ -15,6 +15,7 @@ const AuthForm: React.FC = () => {
   const [mode, setMode] = useState<AuthMode>('login');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   // Clean up auth state to prevent auth limbo
   const cleanupAuthState = () => {
@@ -33,6 +34,24 @@ const AuthForm: React.FC = () => {
       }
     });
   };
+  
+  // Check for authentication errors in URL
+  useEffect(() => {
+    const url = window.location.href;
+    
+    // Check if there's an error in the URL (common with OAuth redirects)
+    if (url.includes('error=') || url.includes('error_description=')) {
+      const errorDescription = new URLSearchParams(window.location.search).get('error_description');
+      toast({
+        title: "Authentication Error",
+        description: errorDescription || "There was a problem with authentication",
+        variant: "destructive",
+      });
+      
+      // Clean up the URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [toast]);
   
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,8 +117,15 @@ const AuthForm: React.FC = () => {
     try {
       cleanupAuthState();
       
+      // Use the current URL as the redirect URL
+      const redirectTo = window.location.origin + '/auth'; 
+      
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'github'
+        provider: 'github',
+        options: {
+          redirectTo: redirectTo,
+          scopes: 'user:email' // Request email scope explicitly
+        }
       });
       
       if (error) throw error;
@@ -109,12 +135,12 @@ const AuthForm: React.FC = () => {
         description: "Redirecting to GitHub for authentication",
       });
     } catch (error: any) {
+      console.error("GitHub auth error:", error);
       toast({
         title: "Authentication error",
         description: error.message,
         variant: "destructive",
       });
-    } finally {
       setLoading(false);
     }
   };

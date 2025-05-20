@@ -16,7 +16,8 @@ export const supabase = createClient<Database>(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      storage: localStorage
+      storage: localStorage,
+      flowType: 'implicit' // Use implicit flow for smoother OAuth redirects
     }
   }
 );

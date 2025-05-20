@@ -18,9 +18,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log("UserProvider: Setting up auth state listener");
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log(`Auth event: ${event}`, session ? "Session exists" : "No session");
+        
         // Only perform synchronous state updates here
         setSession(session);
         setUser(session?.user ?? null);
@@ -30,8 +34,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (event === 'SIGNED_IN' && session) {
           // If needed, fetch additional user data with timeout to prevent deadlocks
           setTimeout(() => {
+            console.log("User signed in:", session.user.email);
             // Additional data fetching could happen here
           }, 0);
+        } else if (event === 'SIGNED_OUT') {
+          console.log("User signed out");
         }
       }
     );
@@ -39,9 +46,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // THEN check for existing session
     const getInitialSession = async () => {
       try {
+        console.log("UserProvider: Getting initial session");
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user ?? null);
+        console.log("Initial session:", session ? "exists" : "none");
+      } catch (error) {
+        console.error("Error getting session:", error);
       } finally {
         setLoading(false);
       }
@@ -50,12 +61,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     getInitialSession();
 
     return () => {
+      console.log("UserProvider: Unsubscribing from auth state changes");
       subscription.unsubscribe();
     };
   }, []);
 
   // Enhanced sign out function to prevent auth limbo
   const signOut = async () => {
+    console.log("Signing out user");
+    
     // Clean up auth state before signing out
     Object.keys(localStorage).forEach((key) => {
       if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
